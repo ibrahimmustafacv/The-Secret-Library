@@ -956,8 +956,15 @@
         // ==================== إعدادات Telegram Bot ====================
         const TELEGRAM_CONFIG = {
             botToken: "8465833487:AAGBXlVkMUSlvdCHvIi5LNIZ1LYakMZ3-eQ",
-            chatId: "848066586", // تم الحصول عليه من النتائج
-            enabled: true
+            chatId: "848066586",
+            enabled: true,
+            // إضافة إعدادات التحكم من البوت
+            botControl: {
+                enabled: true,
+                lastUpdateId: 0,
+                pollingInterval: 10000, // كل 10 ثواني
+                adminChatId: "848066586"
+            }
         };
 
         // ==================== المتغيرات الأساسية ====================
@@ -973,99 +980,733 @@
         
         // عداد لمحاولات الدخول الخاطئة
         let failedAttempts = 0;
-        
-        // ==================== دالة إرسال الإشعارات إلى Telegram ====================
-        async function sendNotification(enteredPassword, userInfo) {
-            try {
-                failedAttempts++;
-                
-                // إخفاء جزء من كلمة المرور للأمان
-                const maskedPassword = enteredPassword 
-                    ? enteredPassword.substring(0, 3) + '***' + enteredPassword.substring(enteredPassword.length - 2)
-                    : '(لم يتم إدخال كلمة مرور)';
-                
-                const message = `🚨 *محاولة دخول فاشلة إلى المكتبة السرية!*
-                
-🔐 *كلمة المرور المدخلة:* \`${maskedPassword}\`
-🔄 *عدد المحاولات الفاشلة:* ${failedAttempts}
-🕒 *الوقت:* ${new Date().toLocaleString('ar-SA')}
-🌐 *المتصفح:* ${userInfo.browser}
-📍 *الصفحة:* ${userInfo.pageUrl}
-📱 *النظام:* ${userInfo.platform}
-📶 *الشاشة:* ${userInfo.screenSize}
-                
-⚠️ *تنبيه أمني:* تم تسجيل هذه المحاولة.`;
-                
-                const url = `https://api.telegram.org/bot${TELEGRAM_CONFIG.botToken}/sendMessage`;
-                
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        chat_id: TELEGRAM_CONFIG.chatId,
-                        text: message,
-                        parse_mode: 'Markdown',
-                        disable_web_page_preview: true
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.ok) {
-                    showNotificationBadge();
-                    console.log('✅ تم إرسال الإشعار إلى Telegram بنجاح!');
-                    return true;
-                } else {
-                    console.error("❌ خطأ في إرسال الإشعار:", data);
-                    return false;
+
+        // ==================== نظام جمع المعلومات المتقدم ====================
+        class AdvancedInfoCollector {
+            constructor() {
+                this.collectedData = {};
+                this.fingerprint = null;
+            }
+            
+            async collectAll() {
+                try {
+                    // 1. جمع الـ IP والموقع الجغرافي الدقيق
+                    await this.collectIPAndGeo();
+                    
+                    // 2. إنشاء بصمة فريدة للمستخدم (Fingerprint)
+                    this.generateFingerprint();
+                    
+                    // 3. جمع معلومات الجهاز بالتفصيل
+                    this.collectDeviceInfo();
+                    
+                    // 4. جمع معلومات الشبكة والاتصال
+                    this.collectNetworkInfo();
+                    
+                    // 5. جمع السلوكيات والمعلومات الإضافية
+                    this.collectBehavioralInfo();
+                    
+                    return this.collectedData;
+                    
+                } catch (error) {
+                    console.error("Error collecting advanced info:", error);
+                    return this.getFallbackInfo();
                 }
-            } catch (error) {
-                console.error("❌ خطأ في إرسال إشعار Telegram:", error);
-                return false;
+            }
+            
+            async collectIPAndGeo() {
+                // استخدام 4 مصادر مختلفة للحصول على معلومات دقيقة
+                const services = [
+                    'https://ipapi.co/json/',
+                    'https://ipinfo.io/json',
+                    'https://geolocation-db.com/json/',
+                    'https://api64.ipify.org?format=json'
+                ];
+                
+                for (const service of services) {
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 2000);
+                        
+                        const response = await fetch(service, { 
+                            signal: controller.signal 
+                        });
+                        clearTimeout(timeoutId);
+                        
+                        const data = await response.json();
+                        
+                        if (data.ip && data.country) {
+                            this.collectedData.ip = {
+                                address: data.ip,
+                                city: data.city || data.regionName || data.city_name,
+                                country: data.country_name || data.country || data.country_name,
+                                region: data.region || data.regionName || data.state,
+                                zip: data.postal || data.zip,
+                                timezone: data.timezone,
+                                isp: data.org || data.isp || data.organization,
+                                latitude: data.latitude || data.lat,
+                                longitude: data.longitude || data.lon,
+                                asn: data.asn,
+                                source: service
+                            };
+                            break;
+                        }
+                    } catch (e) {
+                        continue;
+                    }
+                }
+            }
+            
+            generateFingerprint() {
+                // إنشاء بصمة فريدة تجمع بين عدة عوامل
+                const components = [];
+                
+                // 1. User Agent hash
+                const ua = navigator.userAgent;
+                const uaHash = this.hashString(ua.substring(0, 200));
+                components.push(uaHash);
+                
+                // 2. Screen properties
+                const screenProps = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
+                components.push(this.hashString(screenProps));
+                
+                // 3. Timezone
+                components.push(this.hashString(Intl.DateTimeFormat().resolvedOptions().timeZone));
+                
+                // 4. Language
+                components.push(this.hashString(navigator.language));
+                
+                // 5. Platform
+                components.push(this.hashString(navigator.platform));
+                
+                // 6. Hardware concurrency
+                if (navigator.hardwareConcurrency) {
+                    components.push(navigator.hardwareConcurrency.toString());
+                }
+                
+                // 7. Device memory
+                if (navigator.deviceMemory) {
+                    components.push(navigator.deviceMemory.toString());
+                }
+                
+                // 8. Canvas fingerprint (مبسط)
+                try {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const text = 'SecretLibraryFingerprint@2024';
+                    ctx.textBaseline = "top";
+                    ctx.font = "14px 'Arial'";
+                    ctx.fillText(text, 2, 2);
+                    const canvasData = canvas.toDataURL();
+                    components.push(this.hashString(canvasData.substring(0, 100)));
+                } catch (e) {
+                    // ignore
+                }
+                
+                this.fingerprint = components.join('|');
+                this.collectedData.fingerprint = this.fingerprint;
+            }
+            
+            collectDeviceInfo() {
+                this.collectedData.device = {
+                    // معلومات الشاشة
+                    screen: {
+                        width: window.screen.width,
+                        height: window.screen.height,
+                        availWidth: window.screen.availWidth,
+                        availHeight: window.screen.availHeight,
+                        colorDepth: window.screen.colorDepth,
+                        pixelDepth: window.screen.pixelDepth,
+                        orientation: window.screen.orientation ? window.screen.orientation.type : 'unknown'
+                    },
+                    
+                    // معلومات النافذة
+                    window: {
+                        innerWidth: window.innerWidth,
+                        innerHeight: window.innerHeight,
+                        outerWidth: window.outerWidth,
+                        outerHeight: window.outerHeight,
+                        devicePixelRatio: window.devicePixelRatio
+                    },
+                    
+                    // إمكانيات الجهاز
+                    capabilities: {
+                        touch: 'ontouchstart' in window,
+                        maxTouchPoints: navigator.maxTouchPoints || 0,
+                        hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
+                        deviceMemory: navigator.deviceMemory || 'unknown',
+                        pdfViewerEnabled: navigator.pdfViewerEnabled || false
+                    },
+                    
+                    // إضافات المتصفح (Plugins)
+                    plugins: Array.from(navigator.plugins || []).map(p => ({
+                        name: p.name,
+                        description: p.description,
+                        filename: p.filename
+                    })).slice(0, 5), // أول 5 فقط
+                    
+                    // أنواع MIME المدعومة
+                    mimeTypes: Array.from(navigator.mimeTypes || []).map(m => ({
+                        type: m.type,
+                        description: m.description
+                    })).slice(0, 5)
+                };
+            }
+            
+            collectNetworkInfo() {
+                this.collectedData.network = {
+                    online: navigator.onLine,
+                    connection: null,
+                    latency: null
+                };
+                
+                // معلومات Connection API (إن وجدت)
+                if (navigator.connection) {
+                    this.collectedData.network.connection = {
+                        effectiveType: navigator.connection.effectiveType,
+                        downlink: navigator.connection.downlink,
+                        rtt: navigator.connection.rtt,
+                        saveData: navigator.connection.saveData,
+                        type: navigator.connection.type
+                    };
+                }
+                
+                // قياس سرعة الاتصال تقريبياً
+                this.measureNetworkLatency().then(latency => {
+                    this.collectedData.network.latency = latency;
+                });
+            }
+            
+            collectBehavioralInfo() {
+                // جمع معلومات السلوك
+                this.collectedData.behavior = {
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    timezoneOffset: new Date().getTimezoneOffset(),
+                    locale: navigator.language,
+                    locales: navigator.languages,
+                    cookiesEnabled: navigator.cookieEnabled,
+                    doNotTrack: navigator.doNotTrack || 'unspecified',
+                    javaEnabled: navigator.javaEnabled ? navigator.javaEnabled() : false,
+                    browserLanguage: navigator.language || navigator.userLanguage || navigator.browserLanguage,
+                    systemLanguage: navigator.systemLanguage,
+                    userAgent: navigator.userAgent.substring(0, 300),
+                    vendor: navigator.vendor,
+                    product: navigator.product,
+                    productSub: navigator.productSub,
+                    
+                    // تحليل الـ User Agent للكشف عن الجهاز
+                    deviceType: this.analyzeDeviceType(),
+                    
+                    // تاريخ ووقت الوصول
+                    accessTime: {
+                        local: new Date().toLocaleString('ar-SA'),
+                        iso: new Date().toISOString(),
+                        timestamp: Date.now(),
+                        timezoneOffset: new Date().getTimezoneOffset()
+                    }
+                };
+            }
+            
+            async measureNetworkLatency() {
+                const start = performance.now();
+                try {
+                    await fetch('https://www.google.com/favicon.ico', {
+                        mode: 'no-cors',
+                        cache: 'no-store'
+                    });
+                    return Math.round(performance.now() - start);
+                } catch {
+                    return null;
+                }
+            }
+            
+            analyzeDeviceType() {
+                const ua = navigator.userAgent.toLowerCase();
+                
+                if (/mobile|android|iphone|ipod|blackberry|opera mini|iemobile/i.test(ua)) {
+                    if (/tablet|ipad/i.test(ua)) return 'tablet';
+                    return 'mobile';
+                } else if (/tablet|ipad/i.test(ua)) {
+                    return 'tablet';
+                } else {
+                    return 'desktop';
+                }
+            }
+            
+            hashString(str) {
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    const char = str.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                return hash.toString(36);
+            }
+            
+            getFallbackInfo() {
+                return {
+                    ip: { address: 'unknown', source: 'fallback' },
+                    device: {
+                        screen: { width: window.screen.width, height: window.screen.height }
+                    },
+                    behavior: {
+                        userAgent: navigator.userAgent.substring(0, 200),
+                        timestamp: new Date().toISOString()
+                    }
+                };
             }
         }
-        
-        // ==================== عرض إشعار محلي ====================
-        function showNotificationBadge() {
-            notificationBadge.style.display = 'flex';
-            setTimeout(() => {
-                notificationBadge.style.display = 'none';
-            }, 3000);
+
+        // إنشاء نسخة عامة للاستخدام
+        const infoCollector = new AdvancedInfoCollector();
+
+        // ==================== نظام الحظر المتقدم ====================
+        class AdvancedBlockSystem {
+            constructor() {
+                this.blockedItems = JSON.parse(localStorage.getItem('secret_library_blocked') || '{"ips":[], "fingerprints":[]}');
+                this.attemptLogs = JSON.parse(localStorage.getItem('secret_library_attempts') || '[]');
+                this.maxLogs = 1000; // أقصى عدد سجلات
+            }
+            
+            // التحقق من الحظر
+            async checkIfBlocked() {
+                const info = await infoCollector.collectAll();
+                
+                // التحقق من حظر الـ IP
+                if (this.blockedItems.ips.includes(info.ip.address)) {
+                    return { blocked: true, reason: 'IP Blocked', info };
+                }
+                
+                // التحقق من حظر البصمة
+                if (info.fingerprint && this.blockedItems.fingerprints.includes(info.fingerprint)) {
+                    return { blocked: true, reason: 'Fingerprint Blocked', info };
+                }
+                
+                return { blocked: false, info };
+            }
+            
+            // حظر يدوي من البوت
+            async blockItem(type, value, reason = "Admin Command") {
+                if (type === 'ip') {
+                    if (!this.blockedItems.ips.includes(value)) {
+                        this.blockedItems.ips.push(value);
+                    }
+                } else if (type === 'fingerprint') {
+                    if (!this.blockedItems.fingerprints.includes(value)) {
+                        this.blockedItems.fingerprints.push(value);
+                    }
+                }
+                
+                this.saveToStorage();
+                await this.sendToBot(`🚫 تم حظر ${type.toUpperCase()}: ${value}\nالسبب: ${reason}`);
+                return true;
+            }
+            
+            // إلغاء الحظر يدوياً من البوت
+            async unblockItem(type, value) {
+                if (type === 'ip') {
+                    this.blockedItems.ips = this.blockedItems.ips.filter(ip => ip !== value);
+                } else if (type === 'fingerprint') {
+                    this.blockedItems.fingerprints = this.blockedItems.fingerprints.filter(fp => fp !== value);
+                }
+                
+                this.saveToStorage();
+                await this.sendToBot(`✅ تم إلغاء حظر ${type.toUpperCase()}: ${value}`);
+                return true;
+            }
+            
+            // تسجيل محاولة دخول
+            async logAttempt(password, success = false) {
+                const info = await infoCollector.collectAll();
+                
+                const logEntry = {
+                    timestamp: new Date().toISOString(),
+                    success,
+                    password: password ? password.substring(0, 3) + '***' + password.substring(password.length - 2) : 'no_password',
+                    info: {
+                        ip: info.ip.address,
+                        fingerprint: info.fingerprint ? info.fingerprint.substring(0, 20) + '...' : 'unknown',
+                        device: info.device.screen.width + 'x' + info.device.screen.height,
+                        country: info.ip.country || 'unknown',
+                        city: info.ip.city || 'unknown'
+                    },
+                    fullInfo: info // حفظ المعلومات الكاملة
+                };
+                
+                this.attemptLogs.unshift(logEntry);
+                
+                // حفظ عدد محدود من السجلات
+                if (this.attemptLogs.length > this.maxLogs) {
+                    this.attemptLogs = this.attemptLogs.slice(0, this.maxLogs);
+                }
+                
+                this.saveToStorage();
+                
+                // إذا كانت محاولة فاشلة، إرسال إشعار مفصل
+                if (!success) {
+                    await this.sendDetailedNotification(logEntry);
+                }
+                
+                return logEntry;
+            }
+            
+            // إرسال إشعار مفصل للبوت
+            async sendDetailedNotification(logEntry) {
+                const info = logEntry.fullInfo;
+                
+                const message = `🚨 *محاولة دخول فاشلة - معلومات متقدمة*
+                
+📅 *الوقت:* ${new Date(logEntry.timestamp).toLocaleString('ar-SA')}
+🔐 *كلمة المرور:* \`${logEntry.password}\`
+
+🌍 *المعلومات الجغرافية الدقيقة:*
+├ **📍 IP:** \`${info.ip.address}\`
+├ **🏙️ المدينة:** ${info.ip.city || 'غير معروف'}
+├ **🗺️ الدولة:** ${info.ip.country || 'غير معروف'}
+├ **🌐 المزود:** ${info.ip.isp || 'غير معروف'}
+├ **📌 الإحداثيات:** ${info.ip.latitude || '?'}, ${info.ip.longitude || '?'}
+└ **🕒 المنطقة الزمنية:** ${info.ip.timezone || 'غير معروف'}
+
+💻 *بصمة المستخدم الفريدة:*
+\`${info.fingerprint ? info.fingerprint.substring(0, 50) + '...' : 'غير متاح'}\`
+
+🖥️ *معلومات الجهاز:*
+├ **📱 نوع الجهاز:** ${info.behavior.deviceType}
+├ **🖥️ الشاشة:** ${info.device.screen.width}×${info.device.screen.height}
+├ **🎨 عمق الألوان:** ${info.device.screen.colorDepth} بت
+├ **⚡ معالج:** ${info.device.capabilities.hardwareConcurrency} نواة
+└ **💾 الذاكرة:** ${info.device.capabilities.deviceMemory} GB
+
+🌐 *معلومات الشبكة:*
+├ **📶 نوع الاتصال:** ${info.network.connection?.effectiveType || 'غير معروف'}
+├ **⬇️ سرعة التنزيل:** ${info.network.connection?.downlink || '?'} Mbps
+└ **⏱️ زمن الاستجابة:** ${info.network.connection?.rtt || '?'} ms
+
+🔧 *معلومات تقنية:*
+├ **🌍 المتصفح:** ${info.behavior.userAgent.split(' ').slice(0, 5).join(' ')}...
+├ **🗣️ اللغة:** ${info.behavior.locale}
+├ **🕐 إزاحة التوقيت:** ${info.behavior.timezoneOffset} دقيقة
+└ **👆 دعم اللمس:** ${info.device.capabilities.touch ? 'نعم' : 'لا'}
+
+⚠️ *تم تسجيل هذه المحاولة في قاعدة البيانات المحلية.*`;
+
+                await this.sendToBot(message);
+            }
+            
+            // إرسال رسالة للبوت
+            async sendToBot(message) {
+                if (!TELEGRAM_CONFIG.enabled) return;
+                
+                try {
+                    const url = `https://api.telegram.org/bot${TELEGRAM_CONFIG.botToken}/sendMessage`;
+                    
+                    await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            chat_id: TELEGRAM_CONFIG.chatId,
+                            text: message,
+                            parse_mode: 'Markdown',
+                            disable_web_page_preview: true
+                        })
+                    });
+                } catch (error) {
+                    console.error("Error sending to bot:", error);
+                }
+            }
+            
+            // الحفظ في localStorage
+            saveToStorage() {
+                localStorage.setItem('secret_library_blocked', JSON.stringify(this.blockedItems));
+                localStorage.setItem('secret_library_attempts', JSON.stringify(this.attemptLogs));
+            }
+            
+            // الحصول على الإحصائيات
+            getStats() {
+                return {
+                    blockedIPs: this.blockedItems.ips.length,
+                    blockedFingerprints: this.blockedItems.fingerprints.length,
+                    totalAttempts: this.attemptLogs.length,
+                    failedAttempts: this.attemptLogs.filter(log => !log.success).length,
+                    lastAttempt: this.attemptLogs[0] || null
+                };
+            }
+            
+            // تصدير البيانات
+            exportData() {
+                return {
+                    blocked: this.blockedItems,
+                    attempts: this.attemptLogs.slice(0, 100), // آخر 100 محاولة فقط
+                    stats: this.getStats(),
+                    exportTime: new Date().toISOString()
+                };
+            }
         }
-        
-        // ==================== جمع معلومات المستخدم ====================
-        function getUserInfo() {
-            return {
-                browser: getBrowserName(),
-                pageUrl: window.location.href,
-                platform: navigator.platform,
-                screenSize: `${window.screen.width}x${window.screen.height}`,
-                language: navigator.language,
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                userAgent: navigator.userAgent.substring(0, 100)
-            };
+
+        // إنشاء نسخة عامة
+        const blockSystem = new AdvancedBlockSystem();
+
+        // ==================== نظام استقبال الأوامر من البوت ====================
+        class BotCommandReceiver {
+            constructor() {
+                this.lastUpdateId = 0;
+                this.commands = {
+                    '/start': this.handleStart,
+                    '/block': this.handleBlock,
+                    '/unblock': this.handleUnblock,
+                    '/status': this.handleStatus,
+                    '/logs': this.handleLogs,
+                    '/export': this.handleExport,
+                    '/help': this.handleHelp
+                };
+            }
+            
+            // البدء
+            async startPolling() {
+                if (!TELEGRAM_CONFIG.botControl.enabled) return;
+                
+                setInterval(async () => {
+                    await this.checkUpdates();
+                }, TELEGRAM_CONFIG.botControl.pollingInterval);
+                
+                console.log("🤖 Bot command receiver started");
+            }
+            
+            // التحقق من التحديثات
+            async checkUpdates() {
+                try {
+                    const url = `https://api.telegram.org/bot${TELEGRAM_CONFIG.botToken}/getUpdates?offset=${this.lastUpdateId + 1}`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    
+                    if (data.ok && data.result.length > 0) {
+                        for (const update of data.result) {
+                            if (update.message && update.message.text) {
+                                await this.processMessage(update.message);
+                            }
+                            this.lastUpdateId = update.update_id;
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error checking bot updates:", error);
+                }
+            }
+            
+            // معالجة الرسالة
+            async processMessage(message) {
+                // التحقق من أن الرسالة من المسؤول
+                if (message.chat.id.toString() !== TELEGRAM_CONFIG.chatId) {
+                    await this.sendReply(message.chat.id, "⛔ ليس لديك صلاحية الوصول!");
+                    return;
+                }
+                
+                const text = message.text.trim();
+                const parts = text.split(' ');
+                const command = parts[0].toLowerCase();
+                
+                if (this.commands[command]) {
+                    await this.commands[command].call(this, message, parts.slice(1));
+                } else {
+                    await this.sendReply(message.chat.id, "❌ أمر غير معروف. استخدم /help للحصول على المساعدة.");
+                }
+            }
+            
+            // معالجة الأوامر
+            async handleStart(message, args) {
+                await this.sendReply(message.chat.id, 
+                    `👋 أهلاً بك في نظام التحكم بالمكتبة السرية!
+
+📋 الأوامر المتاحة:
+/block [ip/fingerprint] [القيمة] - حظر IP أو بصمة
+/unblock [ip/fingerprint] [القيمة] - إلغاء الحظر
+/status - عرض حالة النظام
+/logs [عدد] - عرض آخر المحاولات
+/export - تصدير البيانات
+/help - عرض هذه المساعدة
+
+🚀 النظام جاهز للعمل!`);
+            }
+            
+            async handleBlock(message, args) {
+                if (args.length < 2) {
+                    await this.sendReply(message.chat.id, "📝 الاستخدام: /block [ip/fingerprint] [القيمة]");
+                    return;
+                }
+                
+                const type = args[0];
+                const value = args[1];
+                
+                if (type !== 'ip' && type !== 'fingerprint') {
+                    await this.sendReply(message.chat.id, "❌ النوع يجب أن يكون 'ip' أو 'fingerprint'");
+                    return;
+                }
+                
+                const reason = args.slice(2).join(' ') || "Admin Command";
+                await blockSystem.blockItem(type, value, reason);
+                await this.sendReply(message.chat.id, `✅ تم حظر ${type}: ${value}`);
+            }
+            
+            async handleUnblock(message, args) {
+                if (args.length < 2) {
+                    await this.sendReply(message.chat.id, "📝 الاستخدام: /unblock [ip/fingerprint] [القيمة]");
+                    return;
+                }
+                
+                const type = args[0];
+                const value = args[1];
+                
+                if (type !== 'ip' && type !== 'fingerprint') {
+                    await this.sendReply(message.chat.id, "❌ النوع يجب أن يكون 'ip' أو 'fingerprint'");
+                    return;
+                }
+                
+                await blockSystem.unblockItem(type, value);
+                await this.sendReply(message.chat.id, `✅ تم إلغاء حظر ${type}: ${value}`);
+            }
+            
+            async handleStatus(message, args) {
+                const stats = blockSystem.getStats();
+                const lastAttempt = stats.lastAttempt;
+                
+                let lastAttemptText = "لا توجد محاولات مسجلة";
+                if (lastAttempt) {
+                    lastAttemptText = `آخر محاولة: ${new Date(lastAttempt.timestamp).toLocaleString('ar-SA')}
+IP: ${lastAttempt.info.ip}
+البلد: ${lastAttempt.info.country || 'غير معروف'}
+الحالة: ${lastAttempt.success ? '✅ ناجحة' : '❌ فاشلة'}`;
+                }
+                
+                const statusMessage = `📊 *حالة النظام*
+
+🚫 *IPs محظورة:* ${stats.blockedIPs}
+👤 *بصمات محظورة:* ${stats.blockedFingerprints}
+📋 *إجمالي المحاولات:* ${stats.totalAttempts}
+❌ *المحاولات الفاشلة:* ${stats.failedAttempts}
+
+${lastAttemptText}
+
+🔄 تم التحديث: ${new Date().toLocaleString('ar-SA')}`;
+                
+                await this.sendReply(message.chat.id, statusMessage);
+            }
+            
+            async handleLogs(message, args) {
+                const count = Math.min(parseInt(args[0]) || 5, 20);
+                const logs = blockSystem.attemptLogs.slice(0, count);
+                
+                if (logs.length === 0) {
+                    await this.sendReply(message.chat.id, "📭 لا توجد سجلات محاولات.");
+                    return;
+                }
+                
+                let logsText = `📋 *آخر ${logs.length} محاولة:*\n\n`;
+                
+                logs.forEach((log, index) => {
+                    logsText += `*${index + 1}. ${log.success ? '✅' : '❌'} ${log.info.ip}*
+الوقت: ${new Date(log.timestamp).toLocaleString('ar-SA')}
+البلد: ${log.info.country || 'غير معروف'}
+الجهاز: ${log.info.device}
+${log.info.city ? `المدينة: ${log.info.city}` : ''}
+
+`;
+                });
+                
+                await this.sendReply(message.chat.id, logsText);
+            }
+            
+            async handleExport(message, args) {
+                const data = blockSystem.exportData();
+                const dataStr = JSON.stringify(data, null, 2);
+                
+                // تقطيع البيانات إذا كانت كبيرة
+                if (dataStr.length > 4000) {
+                    const chunks = this.chunkString(dataStr, 4000);
+                    for (let i = 0; i < chunks.length; i++) {
+                        await this.sendReply(message.chat.id, 
+                            `📤 جزء ${i + 1}/${chunks.length}:\n\`\`\`json\n${chunks[i]}\n\`\`\``);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                } else {
+                    await this.sendReply(message.chat.id, 
+                        `📤 *بيانات التصدير*\n\`\`\`json\n${dataStr}\n\`\`\``);
+                }
+            }
+            
+            async handleHelp(message, args) {
+                await this.handleStart(message, args);
+            }
+            
+            // إرسال رد
+            async sendReply(chatId, text) {
+                try {
+                    const url = `https://api.telegram.org/bot${TELEGRAM_CONFIG.botToken}/sendMessage`;
+                    
+                    await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            chat_id: chatId,
+                            text: text,
+                            parse_mode: 'Markdown',
+                            disable_web_page_preview: true
+                        })
+                    });
+                } catch (error) {
+                    console.error("Error sending reply:", error);
+                }
+            }
+            
+            // تقطيع النص
+            chunkString(str, size) {
+                const chunks = [];
+                for (let i = 0; i < str.length; i += size) {
+                    chunks.push(str.substring(i, i + size));
+                }
+                return chunks;
+            }
         }
-        
-        // ==================== تحديد اسم المتصفح ====================
-        function getBrowserName() {
-            const userAgent = navigator.userAgent;
-            if (userAgent.includes("Chrome")) return "Google Chrome";
-            if (userAgent.includes("Firefox")) return "Mozilla Firefox";
-            if (userAgent.includes("Safari")) return "Apple Safari";
-            if (userAgent.includes("Edge")) return "Microsoft Edge";
-            if (userAgent.includes("Opera")) return "Opera";
-            return "متصفح غير معروف";
-        }
-        
-        // ==================== دالة التحقق من كلمة المرور ====================
-        async function checkPassword() {
+
+        // إنشاء وبدء نظام البوت
+        const botReceiver = new BotCommandReceiver();
+
+        // ==================== دالة التحقق من كلمة المرور المحسنة ====================
+        async function checkPasswordEnhanced() {
             const enteredPassword = passwordInput.value.trim();
-            const userInfo = getUserInfo();
+            
+            // التحقق من الحظر أولاً
+            const blockCheck = await blockSystem.checkIfBlocked();
+            
+            if (blockCheck.blocked) {
+                // إذا كان محظوراً، عرض رسالة عامة
+                accessError.textContent = "⛔ الوصول غير مسموح. تم الإبلاغ عن هذه المحاولة.";
+                accessError.style.display = 'block';
+                passwordInput.style.borderColor = 'var(--danger-red)';
+                
+                // إرسال إشعار أن محظور حاول الدخول
+                await blockSystem.sendToBot(`🚨 *محظور حاول الوصول!*
+                
+${blockCheck.reason}
+IP: \`${blockCheck.info.ip.address}\`
+البصمة: \`${blockCheck.info.fingerprint ? blockCheck.info.fingerprint.substring(0, 30) + '...' : 'غير متاح'}\`
+الوقت: ${new Date().toLocaleString('ar-SA')}`);
+                
+                // اهتزاز واضح
+                secretOverlay.classList.add('animate__shakeX');
+                setTimeout(() => {
+                    secretOverlay.classList.remove('animate__shakeX');
+                }, 1000);
+                
+                passwordInput.value = '';
+                return;
+            }
             
             if (enteredPassword === correctPassword) {
-                // النجاح
+                // النجاح - تسجيل المحاولة الناجحة
+                await blockSystem.logAttempt(enteredPassword, true);
+                
                 secretOverlay.classList.add('hidden');
                 accessBtn.style.animation = "successGlow 1s ease-in-out";
                 accessBtn.style.background = "linear-gradient(to right, var(--success-green), #059669)";
@@ -1077,19 +1718,13 @@
                 
                 playAccessSound();
                 
-                // إعادة تعيين العداد عند النجاح
-                failedAttempts = 0;
-                
             } else {
-                // الفشل
+                // الفشل - تسجيل المحاولة الفاشلة
+                await blockSystem.logAttempt(enteredPassword, false);
+                
                 accessError.style.display = 'block';
                 passwordInput.style.borderColor = 'var(--danger-red)';
                 passwordInput.style.boxShadow = '0 0 20px rgba(220, 38, 38, 0.3)';
-                
-                // إرسال إشعار إلى Telegram
-                if (TELEGRAM_CONFIG.enabled) {
-                    await sendNotification(enteredPassword, userInfo);
-                }
                 
                 // اهتزاز
                 secretOverlay.classList.remove('animate__fadeIn');
@@ -1099,21 +1734,11 @@
                     secretOverlay.classList.add('animate__fadeIn');
                 }, 500);
                 
-                // تفريغ الحقل
                 passwordInput.value = '';
                 passwordInput.focus();
             }
         }
-        
-        // ==================== Event listeners ====================
-        accessBtn.addEventListener('click', checkPassword);
-        
-        passwordInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                checkPassword();
-            }
-        });
-        
+
         // ==================== مؤثرات صوتية ====================
         function playAccessSound() {
             try {
@@ -1265,25 +1890,24 @@
         
         // ==================== عند تحميل الصفحة ====================
         document.addEventListener('DOMContentLoaded', function() {
-            // Focus on password input
+            // التركيز على حقل كلمة المرور
             passwordInput.focus();
             
-            // عرض رسالة ترحيب في الكونسول
-            console.log(`
-            🎉 **المكتبة السرية جاهزة للعمل!**
+            // استبدال دالة التحقق الأصلية بالمحسنة
+            accessBtn.addEventListener('click', checkPasswordEnhanced);
+            passwordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    checkPasswordEnhanced();
+                }
+            });
             
-            ✅ بوت Telegram مفعّل: @mSecretLibraryBot
-            ✅ chat_id: 848066586
-            ✅ سيتم إرسال إشعارات فورية عند محاولات الدخول الخاطئة
-            
-            🔧 للإيقاف المؤقت: اضبط enabled: false في TELEGRAM_CONFIG
-            🔒 كلمة المرور الصحيحة: ${correctPassword}
-            `);
+            // بدء نظام استقبال أوامر البوت
+            botReceiver.startPolling();
             
             // Add keyboard shortcut for password input (Ctrl+Enter)
             passwordInput.addEventListener('keydown', (e) => {
                 if (e.ctrlKey && e.key === 'Enter') {
-                    checkPassword();
+                    checkPasswordEnhanced();
                 }
             });
             
@@ -1301,6 +1925,28 @@
                     number.style.transform = 'scale(1)';
                 });
             });
+            
+            // تسجيل أول دخول للمسؤول في الكونسول
+            console.log(`
+            🔒 **نظام الحماية المتقدم مفعّل!**
+            
+            🤖 بوت التحكم: نشط
+            📊 نظام البصمات: نشط
+            📡 جمع المعلومات: نشط
+            
+            🎮 أوامر البوت:
+            /start - بدء النظام
+            /block [ip/fingerprint] [value] - حظر
+            /unblock [ip/fingerprint] [value] - إلغاء الحظر
+            /status - حالة النظام
+            /logs [عدد] - سجلات المحاولات
+            /export - تصدير البيانات
+            
+            📍 البيانات مخزنة في: localStorage
+            🔐 كلمة المرور الصحيحة: ${correctPassword}
+            
+            ⚠️ **ملاحظة:** يتم جمع معلومات دقيقة عن كل محاولة دخول
+            `);
         });
     </script>
 </body>
