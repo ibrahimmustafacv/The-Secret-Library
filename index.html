@@ -369,6 +369,7 @@
             justify-content: center;
             font-size: 1.5rem;
             color: white;
+            transition: transform 0.3s ease;
         }
 
         .icon-kali {
@@ -411,13 +412,13 @@
             display: grid;
             grid-template-columns: 1fr;
             gap: 0.8rem;
-            height: 0;
+            max-height: 0;
             overflow: hidden;
-            transition: height 0.5s ease;
+            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .subcategories.open {
-            height: auto;
+        .category-card.active .subcategories {
+            max-height: 800px;
             margin-bottom: 2.5rem;
         }
 
@@ -567,6 +568,11 @@
             50% { transform: translateY(-20px); }
         }
 
+        @keyframes successGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(16, 185, 129, 0.6); }
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .hero-title {
@@ -585,6 +591,10 @@
             .stats {
                 flex-direction: column;
                 align-items: center;
+            }
+            
+            .category-card.active .subcategories {
+                max-height: 1000px;
             }
         }
 
@@ -936,6 +946,10 @@
                 // Hide overlay with animation
                 secretOverlay.classList.add('hidden');
                 
+                // Show success effect on button
+                accessBtn.style.animation = "successGlow 1s ease-in-out";
+                accessBtn.style.background = "linear-gradient(to right, var(--success-green), #059669)";
+                
                 // Show main content with delay
                 setTimeout(() => {
                     mainContent.classList.add('visible');
@@ -997,29 +1011,21 @@
             }
         }
         
-        // Category cards functionality - COMPLETELY INDEPENDENT
+        // Category cards functionality
         document.querySelectorAll('.category-card').forEach(card => {
             const expandBtn = card.querySelector('.expand-btn');
-            const subcategories = card.querySelector('.subcategories');
+            const categoryIcon = card.querySelector('.category-icon');
             
-            // Calculate the actual height of subcategories for this specific card
-            function calculateSubcategoriesHeight() {
-                // First, show the subcategories to get the real height
-                subcategories.style.height = 'auto';
-                subcategories.style.visibility = 'hidden';
-                subcategories.style.position = 'absolute';
-                
-                const height = subcategories.scrollHeight;
-                
-                // Reset styles
-                subcategories.style.height = '';
-                subcategories.style.visibility = '';
-                subcategories.style.position = '';
-                
-                return height;
-            }
+            // Add hover effect to category icons
+            card.addEventListener('mouseenter', () => {
+                categoryIcon.style.transform = 'scale(1.1) rotate(5deg)';
+            });
             
-            expandBtn.addEventListener('click', function(e) {
+            card.addEventListener('mouseleave', () => {
+                categoryIcon.style.transform = 'scale(1) rotate(0deg)';
+            });
+            
+            expandBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 
                 // Check if this card is currently active
@@ -1029,24 +1035,16 @@
                 document.querySelectorAll('.category-card').forEach(otherCard => {
                     if (otherCard !== card) {
                         otherCard.classList.remove('active');
-                        const otherSubcategories = otherCard.querySelector('.subcategories');
-                        otherSubcategories.classList.remove('open');
-                        otherSubcategories.style.height = '0';
                     }
                 });
                 
                 // Now toggle this specific card
                 if (!isActive) {
-                    // Open this card
                     card.classList.add('active');
-                    const height = calculateSubcategoriesHeight();
-                    subcategories.classList.add('open');
-                    subcategories.style.height = height + 'px';
+                    // Play subtle sound when opening
+                    playCardOpenSound();
                 } else {
-                    // Close this card
                     card.classList.remove('active');
-                    subcategories.classList.remove('open');
-                    subcategories.style.height = '0';
                 }
             });
             
@@ -1056,20 +1054,69 @@
                     e.stopPropagation();
                     const link = linkBtn.closest('.subcategory-item').getAttribute('data-link');
                     window.open(link, '_blank');
+                    // Play click sound
+                    playClickSound();
                 });
             });
             
-            // Open link when clicking on subcategory item (not the button)
+            // Open link when clicking on subcategory item
             card.querySelectorAll('.subcategory-item').forEach(item => {
                 item.addEventListener('click', (e) => {
-                    e.stopPropagation();
                     if (!e.target.closest('.open-link')) {
                         const link = item.getAttribute('data-link');
                         window.open(link, '_blank');
+                        // Play click sound
+                        playClickSound();
                     }
                 });
             });
         });
+        
+        // Sound effect for card opening
+        function playCardOpenSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 600;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (e) {
+                console.log("Audio context not supported");
+            }
+        }
+        
+        // Sound effect for clicking links
+        function playClickSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 400;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+            } catch (e) {
+                console.log("Audio context not supported");
+            }
+        }
         
         // Create floating particles
         function createParticles() {
@@ -1105,17 +1152,25 @@
             // Focus on password input
             passwordInput.focus();
             
-            // Add hover effect to category cards
-            const categoryCards = document.querySelectorAll('.category-card');
-            categoryCards.forEach(card => {
-                card.addEventListener('mouseenter', () => {
-                    const icon = card.querySelector('.category-icon');
-                    icon.style.transform = 'scale(1.1) rotate(5deg)';
+            // Add keyboard shortcut for password input (Ctrl+Enter)
+            passwordInput.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    checkPassword();
+                }
+            });
+            
+            // Add subtle animation to stats on hover
+            const statItems = document.querySelectorAll('.stat-item');
+            statItems.forEach(stat => {
+                stat.addEventListener('mouseenter', () => {
+                    const number = stat.querySelector('.stat-number');
+                    number.style.transform = 'scale(1.1)';
+                    number.style.transition = 'transform 0.3s ease';
                 });
                 
-                card.addEventListener('mouseleave', () => {
-                    const icon = card.querySelector('.category-icon');
-                    icon.style.transform = 'scale(1) rotate(0deg)';
+                stat.addEventListener('mouseleave', () => {
+                    const number = stat.querySelector('.stat-number');
+                    number.style.transform = 'scale(1)';
                 });
             });
         });
