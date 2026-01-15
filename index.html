@@ -689,7 +689,7 @@
             
             <div class="stats animate__animated animate__fadeInUp">
                 <div class="stat-item">
-                    <div class="stat-number">7</div>
+                    <div class="stat-number">8</div>
                     <div class="stat-label">أقسام رئيسية</div>
                 </div>
                 <div class="stat-item">
@@ -966,6 +966,58 @@
                             <button class="open-link">
                                 <i class="fas fa-external-link-alt"></i>
                             </button>
+                        </div>
+                    </div>
+                    
+                    <button class="expand-btn">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+
+                <!-- التصيد الاحتيالي متنوع Section -->
+                <div class="category-card" data-category="phishing-variety">
+                    <div class="category-header">
+                        <div class="category-icon icon-phishing">
+                            <i class="fas fa-fish"></i>
+                        </div>
+                        <h3 class="category-name">التصيد الاحتيالي متنوع</h3>
+                    </div>
+                    <p class="category-description">
+                        موارد متنوعة للتصيد الاحتيالي تشمل أدوات ومواقع مختلفة للاختبارات الأمنية.
+                    </p>
+                    
+                    <div class="subcategories">
+                        <div class="subcategory-item" data-category="wifi-we">
+                            <div class="subcategory-name">
+                                <i class="fas fa-wifi subcategory-icon"></i>
+                                <span>WIFI WE</span>
+                            </div>
+                            <div class="open-link">
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- WIFI WE Subcategories (initially hidden) -->
+                        <div class="wifi-we-subcategories" style="display: none;">
+                            <div class="subcategory-item" data-link="https://t.me/PrivatephishingMBot">
+                                <div class="subcategory-name">
+                                    <i class="fab fa-telegram subcategory-icon"></i>
+                                    <span>@PrivatephishingMBot</span>
+                                </div>
+                                <button class="open-link">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="subcategory-item" data-link="https://egyptian-customs-support.github.io/WIFI-We/">
+                                <div class="subcategory-name">
+                                    <i class="fas fa-globe subcategory-icon"></i>
+                                    <span>Website</span>
+                                </div>
+                                <button class="open-link">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     
@@ -1832,6 +1884,28 @@ IP: \`${blockCheck.info.ip.address}\`
                 if (!isActive) {
                     card.classList.add('active');
                     playCardOpenSound();
+                    
+                    // Special handling for "WIFI WE" subcategory
+                    if (card.dataset.category === 'phishing-variety') {
+                        const wifiWeItem = card.querySelector('[data-category="wifi-we"]');
+                        if (wifiWeItem) {
+                            const wifiWeSubcategories = card.querySelector('.wifi-we-subcategories');
+                            const wifiWeIcon = wifiWeItem.querySelector('.open-link i');
+                            
+                            wifiWeItem.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                const isExpanded = wifiWeSubcategories.style.display === 'block';
+                                
+                                if (isExpanded) {
+                                    wifiWeSubcategories.style.display = 'none';
+                                    wifiWeIcon.className = 'fas fa-chevron-down';
+                                } else {
+                                    wifiWeSubcategories.style.display = 'block';
+                                    wifiWeIcon.className = 'fas fa-chevron-up';
+                                }
+                            });
+                        }
+                    }
                 } else {
                     card.classList.remove('active');
                 }
@@ -1842,18 +1916,22 @@ IP: \`${blockCheck.info.ip.address}\`
                 linkBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const link = linkBtn.closest('.subcategory-item').getAttribute('data-link');
-                    window.open(link, '_blank');
-                    playClickSound();
+                    if (link) {
+                        window.open(link, '_blank');
+                        playClickSound();
+                    }
                 });
             });
             
             // Open link when clicking on subcategory item
             card.querySelectorAll('.subcategory-item').forEach(item => {
                 item.addEventListener('click', (e) => {
-                    if (!e.target.closest('.open-link')) {
+                    if (!e.target.closest('.open-link') && !item.hasAttribute('data-category')) {
                         const link = item.getAttribute('data-link');
-                        window.open(link, '_blank');
-                        playClickSound();
+                        if (link) {
+                            window.open(link, '_blank');
+                            playClickSound();
+                        }
                     }
                 });
             });
@@ -1967,6 +2045,12 @@ IP: \`${blockCheck.info.ip.address}\`
                     number.style.transform = 'scale(1)';
                 });
             });
+            
+            // تحديث عدد الأقسام الرئيسية ليصبح 8
+            const statNumber = document.querySelector('.stats .stat-item:nth-child(1) .stat-number');
+            if (statNumber) {
+                statNumber.textContent = '8';
+            }
             
             // تسجيل أول دخول للمسؤول في الكونسول
             console.log(`
