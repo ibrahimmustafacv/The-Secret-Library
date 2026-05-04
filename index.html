@@ -419,6 +419,10 @@
         .icon-browser {
             background: linear-gradient(to right, #9333EA, #7C3AED);
         }
+        
+        .icon-security {
+            background: linear-gradient(to right, #00e5ff, #00bfff);
+        }
 
         .category-name {
             font-family: 'Tajawal', sans-serif;
@@ -690,11 +694,11 @@
             
             <div class="stats animate__animated animate__fadeInUp">
                 <div class="stat-item">
-                    <div class="stat-number">8</div>
+                    <div class="stat-number">9</div>
                     <div class="stat-label">أقسام رئيسية</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-number">15+</div>
+                    <div class="stat-number">22+</div>
                     <div class="stat-label">مورد سري</div>
                 </div>
                 <div class="stat-item">
@@ -764,6 +768,16 @@
                             <div class="subcategory-name">
                                 <i class="fas fa-wifi subcategory-icon"></i>
                                 <span>WiFi WPS</span>
+                            </div>
+                            <button class="open-link">
+                                <i class="fas fa-external-link-alt"></i>
+                            </button>
+                        </div>
+                        <!-- NEW: أدلة استخدام أدوات كالي -->
+                        <div class="subcategory-item" data-link="https://ibrahimmustafacv.github.io/ToolsKali/">
+                            <div class="subcategory-name">
+                                <i class="fas fa-book-open subcategory-icon"></i>
+                                <span>أدلة استخدام أدوات كالي</span>
                             </div>
                             <button class="open-link">
                                 <i class="fas fa-external-link-alt"></i>
@@ -998,7 +1012,7 @@
                             </div>
                         </div>
                         
-                        <!-- WIFI WE Subcategories (initially hidden) -->
+                        <!-- WIFI WE Subcategories -->
                         <div class="wifi-we-subcategories" style="display: none;">
                             <div class="subcategory-item" data-link="https://t.me/PrivatephishingMBot">
                                 <div class="subcategory-name">
@@ -1019,6 +1033,90 @@
                                     <i class="fas fa-external-link-alt"></i>
                                 </button>
                             </div>
+                        </div>
+                        <!-- NEW: مرصد الاحتيال الرقمي -->
+                        <div class="subcategory-item" data-link="https://ibrahimmustafacv.github.io/phishing-messages/">
+                            <div class="subcategory-name">
+                                <i class="fas fa-eye subcategory-icon"></i>
+                                <span>مرصد الاحتيال الرقمي</span>
+                            </div>
+                            <button class="open-link">
+                                <i class="fas fa-external-link-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <button class="expand-btn">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+
+                <!-- NEW: مواقع أمنية مهمة (قسم مستقل) -->
+                <div class="category-card" data-category="security-sites">
+                    <div class="category-header">
+                        <div class="category-icon icon-security">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h3 class="category-name">مواقع أمنية مهمة</h3>
+                    </div>
+                    <p class="category-description">
+                        أدوات وخدمات أمنية على الإنترنت لفحص الروابط والملفات والكشف عن التهديدات.
+                    </p>
+                    
+                    <div class="subcategories">
+                        <div class="subcategory-item" data-link="https://urlscan.io/">
+                            <div class="subcategory-name">
+                                <i class="fas fa-link subcategory-icon"></i>
+                                <span>URLScan.io - فحص الروابط المشبوهة</span>
+                            </div>
+                            <button class="open-link">
+                                <i class="fas fa-external-link-alt"></i>
+                            </button>
+                        </div>
+                        <div class="subcategory-item" data-link="https://any.run/">
+                            <div class="subcategory-name">
+                                <i class="fas fa-flask subcategory-icon"></i>
+                                <span>Any.run - بيئة Sandbox تفاعلية</span>
+                            </div>
+                            <button class="open-link">
+                                <i class="fas fa-external-link-alt"></i>
+                            </button>
+                        </div>
+                        <div class="subcategory-item" data-link="https://www.virustotal.com/gui/home/upload">
+                            <div class="subcategory-name">
+                                <i class="fas fa-shield-virus subcategory-icon"></i>
+                                <span>VirusTotal - فحص بأكثر من 70 محرك</span>
+                            </div>
+                            <button class="open-link">
+                                <i class="fas fa-external-link-alt"></i>
+                            </button>
+                        </div>
+                        <div class="subcategory-item" data-link="https://haveibeenpwned.com/">
+                            <div class="subcategory-name">
+                                <i class="fas fa-envelope-open-text subcategory-icon"></i>
+                                <span>Have I Been Pwned - كشف تسريبات البريد</span>
+                            </div>
+                            <button class="open-link">
+                                <i class="fas fa-external-link-alt"></i>
+                            </button>
+                        </div>
+                        <div class="subcategory-item" data-link="https://www.whatsmydns.net/domain-age">
+                            <div class="subcategory-name">
+                                <i class="fas fa-calendar-alt subcategory-icon"></i>
+                                <span>WhatsMyDNS - عمر النطاق (Domain Age)</span>
+                            </div>
+                            <button class="open-link">
+                                <i class="fas fa-external-link-alt"></i>
+                            </button>
+                        </div>
+                        <div class="subcategory-item" data-link="https://2h.ae/">
+                            <div class="subcategory-name">
+                                <i class="fas fa-cut subcategory-icon"></i>
+                                <span>2h.ae - اختصار الروابط عربي</span>
+                            </div>
+                            <button class="open-link">
+                                <i class="fas fa-external-link-alt"></i>
+                            </button>
                         </div>
                     </div>
                     
@@ -2047,10 +2145,10 @@ IP: \`${blockCheck.info.ip.address}\`
                 });
             });
             
-            // تحديث عدد الأقسام الرئيسية ليصبح 8
+            // تحديث عدد الأقسام الرئيسية ليصبح 9
             const statNumber = document.querySelector('.stats .stat-item:nth-child(1) .stat-number');
             if (statNumber) {
-                statNumber.textContent = '8';
+                statNumber.textContent = '9';
             }
             
             // تسجيل أول دخول للمسؤول في الكونسول
