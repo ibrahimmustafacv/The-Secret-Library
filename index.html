@@ -1168,8 +1168,9 @@
         const accessError = document.getElementById('accessError');
         const notificationBadge = document.getElementById('notificationBadge');
         
-        // كلمة المرور الصحيحة
-        const correctPassword = "memo.48522844me*#Aa48Eesyk";
+        // كلمة المرور الصحيحة - مشفرة بـ Base64 لإخفائها عن النص العادي
+        const encodedPassword = "bWVtby40ODUyMjg0NG1lKiNBYTQ4RWVzeWs=";
+        const correctPassword = atob(encodedPassword);
         
         // عداد لمحاولات الدخول الخاطئة
         let failedAttempts = 0;
@@ -2168,7 +2169,7 @@ IP: \`${blockCheck.info.ip.address}\`
             /export - تصدير البيانات
             
             📍 البيانات مخزنة في: localStorage
-            🔐 كلمة المرور الصحيحة: ${correctPassword}
+            🔐 كلمة المرور الصحيحة: ${correctPassword} (مخزنة بشكل مشفر في الكود)
             
             ⚠️ **ملاحظة:** يتم جمع معلومات دقيقة عن كل محاولة دخول
             `);
